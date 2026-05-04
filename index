@@ -4,120 +4,161 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>神経衰弱</title>
+
 <style>
-  body {
-    margin: 0;
-    background: #111;
-    color: white;
-    font-family: sans-serif;
-    text-align: center;
-  }
+body {
+  margin: 0;
+  background: #111;
+  color: white;
+  font-family: sans-serif;
+  text-align: center;
+}
 
-  h1 {
-    font-size: 18px;
-    margin: 10px 0;
-  }
+h1 {
+  font-size: 18px;
+  margin: 10px 0;
+}
 
-  #board {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 8px;
-    padding: 10px;
-    max-width: 420px;
-    margin: auto;
-  }
+#info {
+  margin: 5px;
+  font-size: 16px;
+}
 
-  .card {
-    aspect-ratio: 1;
-    background: #333;
-    border-radius: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 24px;
-    user-select: none;
-  }
+#board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 10px;
+  max-width: 400px;
+  margin: auto;
+}
 
-  .open {
-    background: #eee;
-    color: #111;
-  }
+.card {
+  aspect-ratio: 1;
+  background: #444;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 26px;
+  user-select: none;
+  transition: transform 0.1s;
+}
 
-  .joker {
-    background: gold !important;
-    color: black;
-  }
+.card:active {
+  transform: scale(0.95);
+}
 
-  #message {
-    margin: 10px;
-    font-size: 16px;
-  }
+.open {
+  color: #111;
+}
+
+.matched {
+  opacity: 0.4;
+}
+
+/* 色 */
+.wang { background: #e74c3c; }
+.meng { background: #3498db; }
+.tai  { background: #2ecc71; }
+.feng { background: #f1c40f; }
+.xin  { background: #9b59b6; }
+.wei  { background: #e67e22; }
+.zai  { background: #1abc9c; }
+.zhuan { background: #ecf0f1; color:#111; }
+
+#restart {
+  display: none;
+  margin: 10px;
+  padding: 10px 20px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: none;
+}
 </style>
 </head>
+
 <body>
 
-<h1>神経衰弱（ワンミス終了）</h1>
-<div id="message">覚えろ…</div>
+<h1>神経衰弱（ミス5回まで）</h1>
+<div id="info">ミス残り：5</div>
 <div id="board"></div>
+<button id="restart">もう一回</button>
 
 <script>
-const chars = ["旺","旺","蒙","蒙","泰","泰","楓","楓","辛","辛","威","威","仔","仔","伍","伍","宋","宋","秋","秋"];
-chars.push("傳"); // ジョーカー
-
-// シャッフル
-chars.sort(() => Math.random() - 0.5);
+const pairs = [
+  {char:"旺", cls:"wang"},
+  {char:"蒙", cls:"meng"},
+  {char:"泰", cls:"tai"},
+  {char:"楓", cls:"feng"},
+  {char:"辛", cls:"xin"},
+  {char:"威", cls:"wei"},
+  {char:"仔", cls:"zai"},
+  {char:"傳", cls:"zhuan"}
+];
 
 const board = document.getElementById("board");
-const message = document.getElementById("message");
+const info = document.getElementById("info");
+const restartBtn = document.getElementById("restart");
 
-let first = null;
-let second = null;
-let lock = true;
-let cleared = 0;
+let first, second, lock, miss, cleared;
 
-// カード生成
-chars.forEach((value) => {
-  const card = document.createElement("div");
-  card.className = "card";
-  card.dataset.value = value;
-  card.textContent = value;
-  board.appendChild(card);
+// 初期化
+restartBtn.addEventListener("click", initGame);
 
-  card.addEventListener("click", () => onClick(card));
-});
+function initGame() {
+  board.innerHTML = "";
+  first = null;
+  second = null;
+  lock = true;
+  miss = 5;
+  cleared = 0;
 
-// 初期2秒表示
-setTimeout(() => {
-  hideAll();
-  lock = false;
-  message.textContent = "スタート";
-}, 2000);
+  info.textContent = "ミス残り：5";
+  restartBtn.style.display = "none";
+
+  let cardsData = [];
+  pairs.forEach(p => {
+    cardsData.push({...p});
+    cardsData.push({...p});
+  });
+
+  cardsData.sort(() => Math.random() - 0.5);
+
+  cardsData.forEach(data => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.dataset.char = data.char;
+    card.dataset.cls = data.cls;
+    card.textContent = "";
+    board.appendChild(card);
+
+    card.addEventListener("click", () => onClick(card));
+  });
+
+  revealAll();
+
+  setTimeout(() => {
+    hideAll();
+    lock = false;
+  }, 2000);
+}
 
 // 全表示
 function revealAll() {
   document.querySelectorAll(".card").forEach(c => {
-    c.textContent = c.dataset.value;
-    c.classList.add("open");
-    if (c.dataset.value === "傳") c.classList.add("joker");
+    c.textContent = c.dataset.char;
+    c.classList.add("open", c.dataset.cls);
   });
 }
 
-// 非一致だけ伏せる
-function hideUnmatched() {
-  document.querySelectorAll(".card").forEach(c => {
-    if (!c.classList.contains("matched") && c.dataset.value !== "傳") {
-      c.textContent = "";
-      c.classList.remove("open", "joker");
-    }
-  });
-}
-
-// 全伏せ
+// 全伏せ（未確定のみ）
 function hideAll() {
   document.querySelectorAll(".card").forEach(c => {
-    if (c.dataset.value !== "傳") {
+    if (!c.classList.contains("matched")) {
       c.textContent = "";
-      c.classList.remove("open", "joker");
+      c.classList.remove("open");
+      c.classList.remove(c.dataset.cls);
     }
   });
 }
@@ -126,25 +167,8 @@ function hideAll() {
 function onClick(card) {
   if (lock || card.classList.contains("matched") || card === first) return;
 
-  card.textContent = card.dataset.value;
-  card.classList.add("open");
-
-  // ジョーカー
-  if (card.dataset.value === "傳") {
-    lock = true;
-    message.textContent = "ジョーカー！";
-
-    revealAll();
-
-    setTimeout(() => {
-      hideUnmatched();
-      lock = false;
-      first = null;
-      second = null;
-      message.textContent = "続けろ…";
-    }, 1000);
-    return;
-  }
+  card.textContent = card.dataset.char;
+  card.classList.add("open", card.dataset.cls);
 
   if (!first) {
     first = card;
@@ -152,7 +176,7 @@ function onClick(card) {
     second = card;
     lock = true;
 
-    if (first.dataset.value === second.dataset.value) {
+    if (first.dataset.char === second.dataset.char) {
       first.classList.add("matched");
       second.classList.add("matched");
 
@@ -162,20 +186,37 @@ function onClick(card) {
       second = null;
       lock = false;
 
-      // クリア判定（20枚）
-      if (cleared === 20) {
-        message.textContent = "クリア！";
+      if (cleared === 16) {
+        info.textContent = "クリア！";
+        restartBtn.style.display = "inline-block";
       }
 
     } else {
-      // ミス → 即ゲームオーバー
-      message.textContent = "ゲームオーバー";
+      miss--;
+      info.textContent = "ミス残り：" + miss;
+
+      if (miss <= 0) {
+        info.textContent = "ゲームオーバー";
+        setTimeout(revealAll, 300);
+        restartBtn.style.display = "inline-block";
+        return;
+      }
+
       setTimeout(() => {
-        revealAll();
-      }, 300);
+        first.textContent = "";
+        second.textContent = "";
+        first.classList.remove("open", first.dataset.cls);
+        second.classList.remove("open", second.dataset.cls);
+        first = null;
+        second = null;
+        lock = false;
+      }, 600);
     }
   }
 }
+
+// 最初に実行
+initGame();
 </script>
 
 </body>
